@@ -91,3 +91,9 @@ func expandStringList(configured []interface{}) []string {
 	}
 	return vs
 }
+
+type ClassicFlag string
+
+const (
+	NIL = ClassicFlag("NIL")
+)

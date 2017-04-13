@@ -304,11 +304,11 @@ func resourceAliyunInstanceRead(d *schema.ResourceData, meta interface{}) error 
 
 	// In Classic network, internet_charge_type is valid in any case, and its default value is 'PayByBanwidth'.
 	// In VPC network, internet_charge_type is valid when instance has public ip, and its default value is 'PayByBanwidth'.
-	if d.Get("subnet_id").(string) == string(common.NIL) || d.Get("vswitch_id").(string) == string(common.NIL) {
+	if d.Get("subnet_id").(string) == string(NIL) || d.Get("vswitch_id").(string) == string(NIL) {
 		ipAddress := strings.Join(ecs.IpAddressSetType(instance.InnerIpAddress).IpAddress, ",")
 		d.Set("private_ip", ipAddress)
-		d.Set("subnet_id", string(common.NIL))
-		d.Set("vswitch_id", string(common.NIL))
+		d.Set("subnet_id", string(NIL))
+		d.Set("vswitch_id", string(NIL))
 		d.Set("internet_charge_type", instance.InternetChargeType)
 	} else {
 		ipAddress := instance.VpcAttributes.PrivateIpAddress.IpAddress[0]
@@ -541,7 +541,7 @@ func buildAliyunRunInstancesArgs(d *schema.ResourceData, meta interface{}) (*ecs
 
 	// because runInstance is not compatible with createInstance, force NetworkType value to classic
 	//In order to create classic instance, there needs to set instance's network type as "classic" forcedly.
-	if subnetValue == string(common.NIL) || vswitchValue == string(common.NIL) {
+	if subnetValue == string(NIL) || vswitchValue == string(NIL) {
 		args.NetworkType = string(ClassicNet)
 	}
 
@@ -554,28 +554,6 @@ func buildAliyunInstanceArgs(d *schema.ResourceData, meta interface{}) (*ecs.Cre
 	args := &ecs.CreateInstanceArgs{
 		RegionId:     getRegion(d, meta),
 		InstanceType: d.Get("instance_type").(string),
-	}
-
-	//In the VPC allocate public ip to ecs instance needs to set valid internet_max_bandwidth_out.
-	subnetValue := d.Get("subnet_id").(string)
-	vswitchValue := d.Get("vswitch_id").(string)
-	if subnetValue != "" {
-		if vswitchValue != "" && vswitchValue != subnetValue {
-			return nil, fmt.Errorf("The value of 'subnet_id' is not equals 'vswitch_id', please unify or remove one of them.")
-		}
-		vswitchValue = subnetValue
-	}
-
-	if vswitchValue != string(common.NIL) {
-		if d.Get("allocate_public_ip").(bool) && args.InternetMaxBandwidthOut <= 0 {
-			if vswitchValue == "" {
-				return nil, fmt.Errorf("Invalid internet_max_bandwidth_out result in allocation public ip failed in the default VPC.")
-			}
-			return nil, fmt.Errorf("Invalid internet_max_bandwidth_out result in allocation public ip failed in the specified VPC: %#v.", vswitchValue)
-		}
-		if vswitchValue != "" {
-			args.VSwitchId = vswitchValue
-		}
 	}
 
 	imageID := d.Get("image_id").(string)
@@ -667,6 +645,28 @@ func buildAliyunInstanceArgs(d *schema.ResourceData, meta interface{}) (*ecs.Cre
 
 	if v := d.Get("user_data").(string); v != "" {
 		args.UserData = v
+	}
+
+	//In the VPC allocate public ip to ecs instance needs to set valid internet_max_bandwidth_out.
+	subnetValue := d.Get("subnet_id").(string)
+	vswitchValue := d.Get("vswitch_id").(string)
+	if subnetValue != "" {
+		if vswitchValue != "" && vswitchValue != subnetValue {
+			return nil, fmt.Errorf("The value of 'subnet_id' is not equals 'vswitch_id', please unify or remove one of them.")
+		}
+		vswitchValue = subnetValue
+	}
+
+	if vswitchValue != string(NIL) {
+		if d.Get("allocate_public_ip").(bool) && args.InternetMaxBandwidthOut <= 0 {
+			if vswitchValue == "" {
+				return nil, fmt.Errorf("Invalid internet_max_bandwidth_out result in allocation public ip failed in the default VPC.")
+			}
+			return nil, fmt.Errorf("Invalid internet_max_bandwidth_out result in allocation public ip failed in the specified VPC: %#v.", vswitchValue)
+		}
+		if vswitchValue != "" {
+			args.VSwitchId = vswitchValue
+		}
 	}
 
 	return args, nil
