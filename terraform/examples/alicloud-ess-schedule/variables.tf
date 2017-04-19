@@ -7,7 +7,7 @@ variable "scaling_min_size" {
 }
 
 variable "scaling_max_size" {
-  default = 1
+  default = 3
 }
 
 variable "enable" {
@@ -24,7 +24,7 @@ variable "ecs_instance_type" {
 }
 
 variable "rule_adjust_size" {
-  default = 3
+  default = 1
 }
 
 variable "schedule_launch_time" {
