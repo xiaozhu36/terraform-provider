@@ -16,6 +16,9 @@ func resourceAlicloudRouterInterface() *schema.Resource {
 		Read:   resourceAlicloudRouterInterfaceRead,
 		Update: resourceAlicloudRouterInterfaceUpdate,
 		Delete: resourceAlicloudRouterInterfaceDelete,
+		Importer: &schema.ResourceImporter{
+			State: schema.ImportStatePassthrough,
+		},
 
 		Schema: map[string]*schema.Schema{
 			"opposite_region": &schema.Schema{
@@ -154,22 +157,35 @@ func resourceAlicloudRouterInterfaceUpdate(d *schema.ResourceData, meta interfac
 func resourceAlicloudRouterInterfaceRead(d *schema.ResourceData, meta interface{}) error {
 	conn := meta.(*AliyunClient).ecsconn
 
-	filter := ecs.Filter{Key: "RouterInterfaceId", Value: []string{d.Id()}}
 	args := &ecs.DescribeRouterInterfacesArgs{
 		RegionId: getRegion(d, meta),
-		Filter:   []ecs.Filter{filter},
-	}
-	resp, err := conn.DescribeRouterInterfaces(args)
-	if err != nil {
-		return fmt.Errorf("DescribeRouterInterfaces got an error: %#v", err)
 	}
 
-	routerInterface := resp.RouterInterfaceSet.RouterInterfaceType
-	if len(routerInterface) == 0 {
+	var allRIs []ecs.RouterInterfaceItemType
+
+	for {
+		resp, err := conn.DescribeRouterInterfaces(args)
+		if err != nil {
+			return fmt.Errorf("DescribeRouterInterfaces got an error: %#v", err)
+		}
+
+		allRIs = append(allRIs, resp.RouterInterfaceSet.RouterInterfaceType...)
+
+		pagination := resp.NextPage()
+
+		if pagination == nil {
+			break
+		}
+
+		args.Pagination = *pagination
+	}
+
+	//routerInterface := resp.RouterInterfaceSet.RouterInterfaceType
+	if len(allRIs) == 0 {
 		return fmt.Errorf("No router interface found.")
 	}
 
-	for _, ri := range routerInterface {
+	for _, ri := range allRIs {
 		if ri.RouterInterfaceId == d.Id() {
 			d.Set("role", ri.Role)
 			d.Set("specification", ri.Spec)

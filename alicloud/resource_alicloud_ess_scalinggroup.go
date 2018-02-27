@@ -4,8 +4,8 @@ import (
 	"fmt"
 
 	"github.com/denverdino/aliyungo/ess"
-	"github.com/hashicorp/terraform/helper/schema"
 	"github.com/denverdino/aliyungo/slb"
+	"github.com/hashicorp/terraform/helper/schema"
 )
 
 func resourceAlicloudEssScalingGroup() *schema.Resource {
@@ -191,8 +191,8 @@ func buildAlicloudEssScalingGroupArgs(d *schema.ResourceData, meta interface{}) 
 
 	dbs, ok := d.GetOk("db_instance_ids")
 	if ok {
-		dbsStrings := dbs.([]interface{})
-		args.DBInstanceId = expandStringList(dbsStrings)
+		//dbsStrings := dbs.([]interface{})
+		args.DBInstanceIds = convertListToJsonString(dbs.(*schema.Set).List())
 	}
 
 	lbs, ok := d.GetOk("loadbalancer_ids")
