@@ -14,6 +14,7 @@ import (
 	"github.com/aliyun/alibaba-cloud-sdk-go/sdk/auth"
 	"github.com/aliyun/alibaba-cloud-sdk-go/sdk/auth/credentials"
 	"github.com/aliyun/alibaba-cloud-sdk-go/services/rds"
+	"github.com/aliyun/alibaba-cloud-sdk-go/services/slb"
 	"github.com/aliyun/alibaba-cloud-sdk-go/services/vpc"
 	"github.com/aliyun/aliyun-oss-go-sdk/oss"
 	"github.com/denverdino/aliyungo/cdn"
@@ -25,7 +26,6 @@ import (
 	"github.com/denverdino/aliyungo/kms"
 	"github.com/denverdino/aliyungo/location"
 	"github.com/denverdino/aliyungo/ram"
-	"github.com/denverdino/aliyungo/slb"
 	"github.com/hashicorp/terraform/terraform"
 )
 
@@ -173,10 +173,7 @@ func (c *Config) rdsConn() (*rds.Client, error) {
 }
 
 func (c *Config) slbConn() (*slb.Client, error) {
-	client := slb.NewSLBClient(c.AccessKey, c.SecretKey, c.Region)
-	client.SetBusinessInfo(BusinessInfoKey)
-	client.SetUserAgent(getUserAgent())
-	return client, nil
+	return slb.NewClientWithOptions(c.RegionId, getSdkConfig(), c.getAuthCredential(false))
 }
 
 func (c *Config) vpcConn() (*vpc.Client, error) {

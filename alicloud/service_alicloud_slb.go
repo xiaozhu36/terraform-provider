@@ -3,20 +3,58 @@ package alicloud
 import (
 	"fmt"
 
-	"github.com/denverdino/aliyungo/slb"
+	"strings"
+	"time"
+
+	"github.com/aliyun/alibaba-cloud-sdk-go/services/slb"
+	"github.com/aliyun/alibaba-cloud-sdk-go/sdk/requests"
+	"github.com/aliyun/alibaba-cloud-sdk-go/sdk/responses"
+	"strconv"
 )
 
-func (client *AliyunClient) DescribeLoadBalancerAttribute(slbId string) (*slb.LoadBalancerType, error) {
+func (client *AliyunClient) DescribeLoadBalancerAttribute(slbId string) (lb slb.DescribeLoadBalancerAttributeResponse, err error) {
 
-	loadBalancer, err := client.slbconn.NewDescribeLoadBalancerAttribute(&slb.NewDescribeLoadBalancerAttributeArgs{
-		RegionId:       client.Region,
-		LoadBalancerId: slbId,
-	})
+	request := slb.CreateDescribeLoadBalancerAttributeRequest()
+	request.RegionId = string(client.Region)
+	request.LoadBalancerId = string(slbId)
+
+	loadBalancer, err := client.slbconn.DescribeLoadBalancerAttribute(request)
 
 	if err != nil {
-		return nil, err
+		if IsExceptedError(err, LoadBalancerNotFound) {
+			return lb, GetNotFoundErrorFromString(GetNotFoundMessage("Load Balancer", slbId))
+		}
+		return
 	}
-	return loadBalancer, nil
+
+	if loadBalancer == nil || loadBalancer.LoadBalancerId != slbId {
+		return lb, GetNotFoundErrorFromString(GetNotFoundMessage("Load Balancer", slbId))
+	}
+
+	return *loadBalancer, nil
+}
+
+func (client *AliyunClient) DescribeLoadBalancerListenerAttribute(slbId, listenerPort string, procotol Protocol) (response responses.CommonResponse, err error) {
+
+	request := getSlbCommonRequest()
+	request.RegionId = string(client.Region)
+	request.ApiName = fmt.Sprintf("DescribeLoadBalancer%sListenerAttribute", strings.ToUpper(string(procotol)))
+	request.QueryParams["ListenerPort"] = listenerPort
+
+	response, err = client.slbconn.ProcessCommonRequest(request)
+
+	if err != nil {
+		if IsExceptedError(err, LoadBalancerNotFound) {
+			return *response, GetNotFoundErrorFromString(GetNotFoundMessage("Load Balancer", slbId))
+		}
+		return *response, err
+	}
+
+	if response == nil || response["ListenerPort"] != listenerPort {
+		return *response, GetNotFoundErrorFromString(GetNotFoundMessage("Load Balancer", slbId))
+	}
+
+	return *response, nil
 }
 
 func (client *AliyunClient) DescribeLoadBalancerRuleId(slbId string, port int, domain, url string) (string, error) {
@@ -35,4 +73,57 @@ func (client *AliyunClient) DescribeLoadBalancerRuleId(slbId string, port int, d
 		}
 	}
 	return "", GetNotFoundErrorFromString(fmt.Sprintf("Rule is not found based on domain %s and url %s.", domain, url))
+}
+
+func (client *AliyunClient) WaitForLoadBalancer(loadBalancerId string, status Status, timeout int) error {
+	if timeout <= 0 {
+		timeout = DefaultTimeout
+	}
+	st := strings.ToLower(string(status))
+	for {
+		lb, err := client.DescribeLoadBalancerAttribute(loadBalancerId)
+
+		if err != nil && !NotFoundError(err) {
+			return err
+		}
+
+		if lb.LoadBalancerStatus == st {
+			//TODO
+			break
+		}
+		timeout = timeout - DefaultIntervalShort
+		if timeout <= 0 {
+			return GetTimeErrorFromString(GetTimeoutMessage("Load Balancer", string(status)))
+		}
+		time.Sleep(DefaultIntervalShort * time.Second)
+	}
+	return nil
+}
+
+func (client *AliyunClient) WaitForLoadBalancerListener(loadBalancerId string, port int, protocol Protocol, status Status, timeout int) error {
+	if timeout <= 0 {
+		timeout = DefaultTimeout
+	}
+
+	for {
+		listener, err := client.DescribeLoadBalancerListenerAttribute(loadBalancerId, strconv.Itoa(port), protocol)
+		if err != nil {
+			if NotFoundError(err){
+				continue
+			}
+			return err
+		}
+
+		if strings.ToUpper(listener["Status"]) == strings.ToLower(string(status)) {
+			break
+		}
+
+		timeout = timeout - DefaultIntervalShort
+		if timeout <= 0 {
+			return GetTimeErrorFromString(GetTimeoutMessage("Load Balancer Listener", string(status)))
+		}
+		time.Sleep(DefaultIntervalShort * time.Second)
+
+	}
+	return nil
 }

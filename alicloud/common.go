@@ -57,6 +57,8 @@ const (
 	Pending     = Status("Pending")
 	Creating    = Status("Creating")
 	Running     = Status("Running")
+	Stopping    = Status("Stopping")
+	Stopped     = Status("Stopped")
 	Available   = Status("Available")
 	Unavailable = Status("Unavailable")
 	Modifying   = Status("Modifying")

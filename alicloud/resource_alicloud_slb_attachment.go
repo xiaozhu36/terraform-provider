@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/aliyun/alibaba-cloud-sdk-go/services/slb"
 	"github.com/hashicorp/terraform/helper/resource"
 	"github.com/hashicorp/terraform/helper/schema"
 )
@@ -74,10 +75,6 @@ func resourceAliyunSlbAttachmentCreate(d *schema.ResourceData, meta interface{})
 		return err
 	}
 
-	if loadBalancer == nil {
-		d.SetId("")
-		return fmt.Errorf("Specified SLB Id %s is not found in %#v.", d.Get("load_balancer_id").(string), getRegion(d, meta))
-	}
 	d.SetId(loadBalancer.LoadBalancerId)
 
 	return resourceAliyunSlbAttachmentUpdate(d, meta)
@@ -87,16 +84,11 @@ func resourceAliyunSlbAttachmentRead(d *schema.ResourceData, meta interface{}) e
 
 	loadBalancer, err := meta.(*AliyunClient).DescribeLoadBalancerAttribute(d.Id())
 	if err != nil {
-		if IsExceptedError(err, LoadBalancerNotFound) {
+		if NotFoundError(err) {
 			d.SetId("")
 			return nil
 		}
 		return err
-	}
-
-	if loadBalancer == nil {
-		d.SetId("")
-		return nil
 	}
 
 	backendServerType := loadBalancer.BackendServers
@@ -136,11 +128,14 @@ func resourceAliyunSlbAttachmentUpdate(d *schema.ResourceData, meta interface{})
 		os := o.(*schema.Set)
 		ns := n.(*schema.Set)
 		remove := os.Difference(ns).List()
-		add := expandBackendServers(ns.Difference(os).List(), weight)
+		add := ns.Difference(os).List()
 
 		if len(add) > 0 {
 			if err := resource.Retry(2*time.Minute, func() *resource.RetryError {
-				_, err := slbconn.AddBackendServers(d.Id(), add)
+				request := slb.CreateAddBackendServersRequest()
+				request.LoadBalancerId = d.Id()
+				request.BackendServers = expandBackendServers(add, weight)
+				_, err := slbconn.AddBackendServers(request)
 				if err != nil {
 					if IsExceptedError(err, ServiceIsConfiguring) {
 						return resource.RetryableError(fmt.Errorf("Load banalcer adds backend servers timeout and got an error: %#v.", err))
@@ -166,7 +161,10 @@ func resourceAliyunSlbAttachmentUpdate(d *schema.ResourceData, meta interface{})
 
 	if update {
 		if err := resource.Retry(2*time.Minute, func() *resource.RetryError {
-			if _, err := slbconn.SetBackendServers(d.Id(), expandBackendServers(d.Get("instance_ids").(*schema.Set).List(), weight)); err != nil {
+			request := slb.CreateSetBackendServersRequest()
+			request.LoadBalancerId = d.Id()
+			request.BackendServers = expandBackendServers(d.Get("instance_ids").(*schema.Set).List(), weight)
+			if _, err := slbconn.SetBackendServers(request); err != nil {
 				if IsExceptedError(err, ServiceIsConfiguring) {
 					return resource.RetryableError(fmt.Errorf("Load banalcer sets backend servers timeout and got an error: %#v.", err))
 				}
@@ -191,9 +189,11 @@ func removeBackendServers(d *schema.ResourceData, meta interface{}, servers []in
 	client := meta.(*AliyunClient)
 	instanceSet := d.Get("instance_ids").(*schema.Set)
 	if len(servers) > 0 {
-
+		request := slb.CreateRemoveBackendServersRequest()
+		request.LoadBalancerId = d.Id()
+		request.BackendServers = expandBackendServers(servers, d.Get("weight").(int))
 		return resource.Retry(3*time.Minute, func() *resource.RetryError {
-			_, err := client.slbconn.RemoveBackendServers(d.Id(), convertArrayInterfaceToArrayString(servers))
+			_, err := client.slbconn.RemoveBackendServers(request)
 			if err != nil {
 				if IsExceptedError(err, BackendServerconfiguring) || IsExceptedError(err, ServiceIsStopping) {
 					return resource.RetryableError(fmt.Errorf("Load balancer removes backend servers timeout and got an error: %#v", err))
@@ -203,15 +203,11 @@ func removeBackendServers(d *schema.ResourceData, meta interface{}, servers []in
 
 			loadBalancer, err := client.DescribeLoadBalancerAttribute(d.Id())
 			if err != nil {
-				if IsExceptedError(err, LoadBalancerNotFound) {
+				if NotFoundError(err) {
 					return nil
 				}
 				return resource.NonRetryableError(fmt.Errorf("DescribeLoadBalancerAttribute got an error: %#v", err))
 
-			}
-
-			if loadBalancer == nil {
-				return nil
 			}
 
 			servers := loadBalancer.BackendServers.BackendServer
