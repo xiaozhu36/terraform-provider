@@ -236,3 +236,31 @@ func cmsDimensionsDiffSuppressFunc(k, old, new string, d *schema.ResourceData) b
 	sort.Strings(news)
 	return reflect.DeepEqual(olds, news)
 }
+
+func logStoreIndexFieldDiffSuppressFunc(k, old, new string, d *schema.ResourceData) bool {
+	if d.Get("index_type").(string) == string(FullText) {
+		return true
+	}
+	return false
+}
+
+func logStoreIndexTokenFieldDiffSuppressFunc(k, old, new string, d *schema.ResourceData) bool {
+	if d.Get("index_type").(string) == string(FullText) {
+		return false
+	}
+	fieldType := d.Get("field_type").(string)
+	if fieldType == string(TextType) || fieldType == string(JsonType) {
+		return false
+	}
+	return true
+}
+
+func logStoreIndexFieldNumberFieldDiffSuppressFunc(k, old, new string, d *schema.ResourceData) bool {
+	if d.Get("index_type").(string) == string(Field) {
+		fieldType := d.Get("field_type").(string)
+		if fieldType == string(LongType) || fieldType == string(DoubleType) {
+			return true
+		}
+	}
+	return false
+}

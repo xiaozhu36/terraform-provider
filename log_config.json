@@ -1,0 +1,12 @@
+"logType": "common_reg_log",
+"logPath": "/var/log/httpd/",
+"filePattern": "access*.log",
+"localStorage": true,
+"timeFormat": "%Y/%m/%d %H:%M:%S",
+"logBeginRegex": ".*",
+"regex": "(\w+)(\s+)",
+"key" :["key1", "key2"],
+"filterKey":["key1"],
+"filterRegex":["regex1"],
+"fileEncoding":"utf8",
+"topicFormat": "none"

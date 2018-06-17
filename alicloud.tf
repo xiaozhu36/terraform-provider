@@ -1,45 +1,64 @@
-variable "region" {
-  default = "cn-beijing"
-}
+//resource "alicloud_log_project" "pp" {
+//  name = "terraform"
+//}
+//
+//resource "alicloud_log_store" "store" {
+//  project = "${alicloud_log_project.pp.id}"
+//  name = "terraform2"
+//  retention_period = "3600"
+//  shard_count = 1
+//}
+//
+//resource "alicloud_log_store_index" "index" {
+//  project = "${alicloud_log_project.pp.id}"
+//  logstore = "${alicloud_log_store.store.name}"
+//  index_type = "Field"
+//  field_name = "tef"
+//}
+//
+//resource "alicloud_log_store_index" "index2" {
+//  project = "${alicloud_log_project.pp.id}"
+//  logstore = "${alicloud_log_store.store.name}"
+//  index_type = "Field"
+//  field_name = "teff"
+//}
+//
+//resource "alicloud_log_store_index" "index3" {
+//  project = "${alicloud_log_project.pp.id}"
+//  logstore = "${alicloud_log_store.store.name}"
+////  index_type = "Field"
+////  field_name = "tef2"
+//  token = " #$%^*\r\n\t"
+//}
+//
+//resource "alicloud_log_config" "config" {
+//  project = "${alicloud_log_project.pp.id}"
+//  name = "terraform"
+//  input_detail = "${file("log_config.json")}"
+//}
+//
+//resource "alicloud_log_machine_group" "group" {
+//  project = "${alicloud_log_project.pp.name}"
+//  name = "from-terraform"
+//  topic = "terraform"
+//  identify_list = ["10.0.0.1", "10.0.0.3", "10.0.0.2"]
+//}
+//
+//resource "alicloud_log_machine_group_attachment" "config" {
+//  project = "${alicloud_log_project.pp.name}"
+//  group_name = "${alicloud_log_machine_group.group.name}"
+//  config_names = ["${alicloud_log_config.config.name}"]
+//}
+//
+//resource "alicloud_log_consumer_group" "group" {
+//  project = "${alicloud_log_project.pp.name}"
+//  logstore = "${alicloud_log_store.store.name}"
+//  name = "from-terraform"
+//  timeout = "100"
+//  in_order = "true"
+//}
 
-variable "ecs_password" {
-  default = "Test12345"
-}
-
-variable "worker_count" {
-  default = "1"
-}
-variable "worker_count_format" {
-  default = "%03d"
-}
-variable "worker_ecs_type" {
-  default = "ecs.n1.small"
-}
-
-variable "short_name" {
-  default = "hi"
-}
-
-variable "internet_charge_type" {
-  default = "PayByTraffic"
-}
-
-variable "datacenter" {
-  default = "beijing"
-}
-
-provider "alicloud" {
-  region = "${var.region}"
-}
-
-module "worker-nodes" {
-  source = "./examples/ecs"
-  count = "${var.worker_count}"
-  count_format = "${var.worker_count_format}"
-  role = "worker"
-  datacenter = "${var.datacenter}"
-  ecs_type = "${var.worker_ecs_type}"
-  ecs_password = "${var.ecs_password}"
-  short_name = "${var.short_name}"
-  internet_charge_type = "${var.internet_charge_type}"
+resource "alicloud_log_project" "aa" {
+  name = "for-tf-test"
+  description = "tf unit test"
 }

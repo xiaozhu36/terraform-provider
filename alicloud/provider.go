@@ -43,6 +43,12 @@ func Provider() terraform.ResourceProvider {
 				DefaultFunc: schema.EnvDefaultFunc("OTS_INSTANCE_NAME", os.Getenv("OTS_INSTANCE_NAME")),
 				Description: descriptions["ots_instance_name"],
 			},
+			"log_endpoint": &schema.Schema{
+				Type:        schema.TypeString,
+				Optional:    true,
+				DefaultFunc: schema.EnvDefaultFunc("LOG_ENDPOINT", os.Getenv("LOG_ENDPOINT")),
+				Description: descriptions["log_endpoint"],
+			},
 		},
 		DataSourcesMap: map[string]*schema.Resource{
 
@@ -121,20 +127,27 @@ func Provider() terraform.ResourceProvider {
 			"alicloud_ram_role":            resourceAlicloudRamRole(),
 			"alicloud_ram_policy":          resourceAlicloudRamPolicy(),
 			// alicloud_ram_alias has been deprecated
-			"alicloud_ram_alias":                   resourceAlicloudRamAccountAlias(),
-			"alicloud_ram_account_alias":           resourceAlicloudRamAccountAlias(),
-			"alicloud_ram_group_membership":        resourceAlicloudRamGroupMembership(),
-			"alicloud_ram_user_policy_attachment":  resourceAlicloudRamUserPolicyAtatchment(),
-			"alicloud_ram_role_policy_attachment":  resourceAlicloudRamRolePolicyAttachment(),
-			"alicloud_ram_group_policy_attachment": resourceAlicloudRamGroupPolicyAtatchment(),
-			"alicloud_container_cluster":           resourceAlicloudCSSwarm(),
-			"alicloud_cs_application":              resourceAlicloudCSApplication(),
-			"alicloud_cs_swarm":                    resourceAlicloudCSSwarm(),
-			"alicloud_cs_kubernetes":               resourceAlicloudCSKubernetes(),
-			"alicloud_cdn_domain":                  resourceAlicloudCdnDomain(),
-			"alicloud_router_interface":            resourceAlicloudRouterInterface(),
-			"alicloud_ots_table":                   resourceAlicloudOtsTable(),
-			"alicloud_cms_alarm":                   resourceAlicloudCmsAlarm(),
+			"alicloud_ram_alias":                    resourceAlicloudRamAccountAlias(),
+			"alicloud_ram_account_alias":            resourceAlicloudRamAccountAlias(),
+			"alicloud_ram_group_membership":         resourceAlicloudRamGroupMembership(),
+			"alicloud_ram_user_policy_attachment":   resourceAlicloudRamUserPolicyAtatchment(),
+			"alicloud_ram_role_policy_attachment":   resourceAlicloudRamRolePolicyAttachment(),
+			"alicloud_ram_group_policy_attachment":  resourceAlicloudRamGroupPolicyAtatchment(),
+			"alicloud_container_cluster":            resourceAlicloudCSSwarm(),
+			"alicloud_cs_application":               resourceAlicloudCSApplication(),
+			"alicloud_cs_swarm":                     resourceAlicloudCSSwarm(),
+			"alicloud_cs_kubernetes":                resourceAlicloudCSKubernetes(),
+			"alicloud_cdn_domain":                   resourceAlicloudCdnDomain(),
+			"alicloud_router_interface":             resourceAlicloudRouterInterface(),
+			"alicloud_ots_table":                    resourceAlicloudOtsTable(),
+			"alicloud_cms_alarm":                    resourceAlicloudCmsAlarm(),
+			"alicloud_log_project":                  resourceAlicloudLogProject(),
+			"alicloud_log_store":                    resourceAlicloudLogStore(),
+			"alicloud_log_store_index":              resourceAlicloudLogStoreIndex(),
+			"alicloud_log_config":                   resourceAlicloudLogConfig(),
+			"alicloud_log_consumer_group":           resourceAlicloudLogConsumerGroup(),
+			"alicloud_log_machine_group":            resourceAlicloudLogMachineGroup(),
+			"alicloud_log_machine_group_attachment": resourceAlicloudLogMachineGroupAttachment(),
 		},
 
 		ConfigureFunc: providerConfigure,
@@ -149,11 +162,10 @@ func providerConfigure(d *schema.ResourceData) (interface{}, error) {
 		}
 	}
 	config := Config{
-		AccessKey:       d.Get("access_key").(string),
-		SecretKey:       d.Get("secret_key").(string),
-		Region:          common.Region(region.(string)),
-		RegionId:        region.(string),
-		OtsInstanceName: d.Get("ots_instance_name").(string),
+		AccessKey: d.Get("access_key").(string),
+		SecretKey: d.Get("secret_key").(string),
+		Region:    common.Region(region.(string)),
+		RegionId:  region.(string),
 	}
 
 	if token, ok := d.GetOk("security_token"); ok && token.(string) != "" {
@@ -162,6 +174,10 @@ func providerConfigure(d *schema.ResourceData) (interface{}, error) {
 
 	if ots_instance_name, ok := d.GetOk("ots_instance_name"); ok && ots_instance_name.(string) != "" {
 		config.OtsInstanceName = ots_instance_name.(string)
+	}
+
+	if logEndpoint, ok := d.GetOk("log_endpoint"); ok && logEndpoint.(string) != "" {
+		config.LogEndpoint = logEndpoint.(string)
 	}
 
 	client, err := config.Client()
@@ -183,5 +199,6 @@ func init() {
 		"secret_key":     "Secret key of alicloud",
 		"region":         "Region of alicloud",
 		"security_token": "Alibaba Cloud Security Token",
+		"log_endpoint":   "Alibaba Cloud log service self-define endpoint",
 	}
 }
