@@ -22,6 +22,7 @@ import (
 	"github.com/aliyun/aliyun-log-go-sdk"
 	"github.com/aliyun/aliyun-oss-go-sdk/oss"
 	"github.com/aliyun/aliyun-tablestore-go-sdk/tablestore"
+	"github.com/aliyun/fc-go-sdk"
 	"github.com/denverdino/aliyungo/cdn"
 	"github.com/denverdino/aliyungo/common"
 	"github.com/denverdino/aliyungo/cs"
@@ -42,26 +43,30 @@ type Config struct {
 	SecurityToken   string
 	OtsInstanceName string
 	LogEndpoint     string
+	AccountId       string
+	FcEndpoint      string
 }
 
 // AliyunClient of aliyun
 type AliyunClient struct {
-	Region   common.Region
-	RegionId string
-	ecsconn  *ecs.Client
-	essconn  *ess.Client
-	rdsconn  *rds.Client
-	vpcconn  *vpc.Client
-	slbconn  *slb.Client
-	ossconn  *oss.Client
-	dnsconn  *dns.Client
-	ramconn  ram.RamClientInterface
-	csconn   *cs.Client
-	cdnconn  *cdn.CdnClient
-	kmsconn  *kms.Client
-	otsconn  *tablestore.TableStoreClient
-	cmsconn  *cms.Client
-	logconn  *sls.Client
+	Region    common.Region
+	RegionId  string
+	AccountId string
+	ecsconn   *ecs.Client
+	essconn   *ess.Client
+	rdsconn   *rds.Client
+	vpcconn   *vpc.Client
+	slbconn   *slb.Client
+	ossconn   *oss.Client
+	dnsconn   *dns.Client
+	ramconn   ram.RamClientInterface
+	csconn    *cs.Client
+	cdnconn   *cdn.CdnClient
+	kmsconn   *kms.Client
+	otsconn   *tablestore.TableStoreClient
+	cmsconn   *cms.Client
+	logconn   *sls.Client
+	fcconn    *fc.Client
 }
 
 // Client for AliyunClient
@@ -127,23 +132,29 @@ func (c *Config) Client() (*AliyunClient, error) {
 	if err != nil {
 		return nil, err
 	}
+	fcconn, err := c.fcConn()
+	if err != nil {
+		return nil, err
+	}
 	return &AliyunClient{
-		Region:   c.Region,
-		RegionId: c.RegionId,
-		ecsconn:  ecsconn,
-		vpcconn:  vpcconn,
-		slbconn:  slbconn,
-		rdsconn:  rdsconn,
-		essconn:  essconn,
-		ossconn:  ossconn,
-		dnsconn:  dnsconn,
-		ramconn:  ramconn,
-		csconn:   csconn,
-		cdnconn:  cdnconn,
-		kmsconn:  kmsconn,
-		otsconn:  otsconn,
-		cmsconn:  cmsconn,
-		logconn:  c.logConn(),
+		Region:    c.Region,
+		RegionId:  c.RegionId,
+		AccountId: c.AccountId,
+		ecsconn:   ecsconn,
+		vpcconn:   vpcconn,
+		slbconn:   slbconn,
+		rdsconn:   rdsconn,
+		essconn:   essconn,
+		ossconn:   ossconn,
+		dnsconn:   dnsconn,
+		ramconn:   ramconn,
+		csconn:    csconn,
+		cdnconn:   cdnconn,
+		kmsconn:   kmsconn,
+		otsconn:   otsconn,
+		cmsconn:   cmsconn,
+		logconn:   c.logConn(),
+		fcconn:    fcconn,
 	}, nil
 }
 
@@ -321,6 +332,24 @@ func (c *Config) logConn() *sls.Client {
 		SecurityToken:   c.SecurityToken,
 		UserAgent:       getUserAgent(),
 	}
+}
+
+func (c *Config) fcConn() (client *fc.Client, err error) {
+	endpoint := c.LogEndpoint
+	if endpoint == "" {
+		endpoint = LoadEndpoint(c.RegionId, FCCode)
+		if endpoint == "" {
+			endpoint = fmt.Sprintf("%s.fc.aliyuncs.com", c.RegionId)
+		}
+	}
+
+	client, err = fc.NewClient(fmt.Sprintf("%s%s%s", c.AccountId, DOT_SEPARATED, endpoint), ApiVersion20160815, c.AccessKey, c.SecretKey)
+	if err != nil {
+		return
+	}
+	client.Config.UserAgent = getUserAgent()
+	client.Config.SecurityToken = c.SecurityToken
+	return
 }
 
 func getSdkConfig() *sdk.Config {

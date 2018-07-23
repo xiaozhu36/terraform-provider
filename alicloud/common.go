@@ -141,6 +141,13 @@ func getRegionId(d *schema.ResourceData, meta interface{}) string {
 	return meta.(*AliyunClient).RegionId
 }
 
+func requireAccountId(meta interface{}) error {
+	if meta.(*AliyunClient).AccountId == "" {
+		return fmt.Errorf("Provider field 'account_id' is required for this resource.")
+	}
+	return nil
+}
+
 // Protocol represents network protocol
 type Protocol string
 
@@ -210,6 +217,18 @@ func convertListToJsonString(configured []interface{}) string {
 	}
 	result += "]"
 	return result
+}
+
+func StringPointer(s string) *string {
+	return &s
+}
+
+func BoolPointer(b bool) *bool {
+	return &b
+}
+
+func Int32Pointer(i int32) *int32 {
+	return &i
 }
 
 const ServerSideEncryptionAes256 = "AES256"
@@ -296,6 +315,7 @@ const (
 	KMSCode     = ServiceCode("KMS")
 	OTSCode     = ServiceCode("OTS")
 	LOGCode     = ServiceCode("LOG")
+	FCCode      = ServiceCode("FC")
 )
 
 //xml
@@ -357,6 +377,7 @@ func LoadEndpoint(region string, serviceCode ServiceCode) string {
 
 const ApiVersion20140526 = "2014-05-26"
 const ApiVersion20140828 = "2014-08-28"
+const ApiVersion20160815 = "2016-08-15"
 
 type CommonRequestDomain string
 

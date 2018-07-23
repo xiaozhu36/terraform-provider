@@ -95,3 +95,31 @@ func (client *AliyunClient) DescribeLogMachineGroup(projectName, groupName strin
 	}
 	return
 }
+
+func (client *AliyunClient) DescribeLogConsumerGroup(project, logstore, groupName string) (group sls.ConsumerGroup, err error) {
+	err = resource.Retry(2*time.Minute, func() *resource.RetryError {
+		groups, err := client.logconn.ListConsumerGroup(project, logstore)
+		if err != nil {
+			if IsExceptedErrors(err, []string{ProjectNotExist, LogStoreNotExist}) {
+				return resource.NonRetryableError(GetNotFoundErrorFromString(GetNotFoundMessage("Consumer Group", groupName)))
+
+			}
+			if IsExceptedErrors(err, []string{InternalServerError}) {
+				return resource.RetryableError(fmt.Errorf("GetLogConsumerGroup %s got an error: %#v.", groupName, err))
+			}
+			return resource.NonRetryableError(err)
+		}
+		if groups == nil || len(groups) < 1 {
+			return resource.NonRetryableError(GetNotFoundErrorFromString(GetNotFoundMessage("Consumer Group", groupName)))
+		}
+
+		for _, g := range groups {
+			if g.ConsumerGroupName == groupName {
+				group = *g
+				return nil
+			}
+		}
+		return resource.NonRetryableError(GetNotFoundErrorFromString(GetNotFoundMessage("Consumer Group", groupName)))
+	})
+	return
+}
