@@ -48,6 +48,20 @@ func Provider() terraform.ResourceProvider {
 				DefaultFunc: schema.EnvDefaultFunc("LOG_ENDPOINT", os.Getenv("LOG_ENDPOINT")),
 				Description: descriptions["log_endpoint"],
 			},
+
+			"account_id": &schema.Schema{
+				Type:        schema.TypeString,
+				Optional:    true,
+				DefaultFunc: schema.EnvDefaultFunc("ALICLOUD_ACCOUNT_ID", os.Getenv("ALICLOUD_ACCOUNT_ID")),
+				Description: descriptions["account_id"],
+			},
+
+			"fc": &schema.Schema{
+				Type:        schema.TypeString,
+				Optional:    true,
+				DefaultFunc: schema.EnvDefaultFunc("FC_ENDPOINT", os.Getenv("FC_ENDPOINT")),
+				Description: descriptions["fc"],
+			},
 		},
 		DataSourcesMap: map[string]*schema.Resource{
 
@@ -146,6 +160,10 @@ func Provider() terraform.ResourceProvider {
 			"alicloud_log_store":                   resourceAlicloudLogStore(),
 			"alicloud_log_store_index":             resourceAlicloudLogStoreIndex(),
 			"alicloud_log_machine_group":           resourceAlicloudLogMachineGroup(),
+			"alicloud_log_consumer_group":          resourceAlicloudLogConsumerGroup(),
+			"alicloud_fc_service":                  resourceAlicloudFCService(),
+			"alicloud_fc_function":                 resourceAlicloudFCFunction(),
+			"alicloud_fc_trigger":                  resourceAlicloudFCTrigger(),
 		},
 
 		ConfigureFunc: providerConfigure,
@@ -178,6 +196,14 @@ func providerConfigure(d *schema.ResourceData) (interface{}, error) {
 		config.LogEndpoint = logEndpoint.(string)
 	}
 
+	if account, ok := d.GetOk("account_id"); ok && account.(string) != "" {
+		config.AccountId = account.(string)
+	}
+
+	if fcEndpoint, ok := d.GetOk("fc"); ok && fcEndpoint.(string) != "" {
+		config.FcEndpoint = fcEndpoint.(string)
+	}
+
 	client, err := config.Client()
 	if err != nil {
 		return nil, err
@@ -198,5 +224,7 @@ func init() {
 		"region":         "Region of alicloud",
 		"security_token": "Alibaba Cloud Security Token",
 		"log_endpoint":   "Alibaba Cloud log service self-define endpoint",
+		"account_id":     "Alibaba Cloud account ID",
+		"fc":             "Custom function compute endpoints",
 	}
 }
